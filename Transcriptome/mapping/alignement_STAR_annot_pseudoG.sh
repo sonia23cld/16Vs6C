@@ -1,48 +1,59 @@
 #!/bin/sh
 
-# PBS #
-#PBS -N STAR_align_pseudoG
-#PBS -P cegs
-#PBS -j oe
-#PBS -o Logs/STAR_align_pseudoG_^array_index^.log
-#PBS -l walltime=12:00:00,mem=10GB,ncpus=8
-#PBS -J 1-10:2
+# SLURM #
+#SBATCH --job-name=STAR_align_pseudoG
+#SBATCH --output=/users/sonia.celestini/New_data/Logs/STAR_align_pseudoG_%A_%a.log 
+#SBATCH --time=8:00:00
+#SBATCH --mem-per-cpu=10GB
+#SBATCH --cpus-per-task=8
+#SBATCH --array=1-48
 
 # MODULES #
 ml star/2.7.1a-foss-2018b
-ml samtools/1.9-foss-2018b 
+ml samtools/1.9-foss-2018b
 
 # DATA #
-i=$PBS_ARRAY_INDEX
-mainDir=/scratch-cbe/users/pieter.clauw/16vs6/Data/Transcriptome/
+i=$SLURM_ARRAY_TASK_ID
+mainDir=/scratch-cbe/users/sonia.celestini/FASTQraw_trimmed/
+samples=/users/sonia.celestini/New_data/samples_updated.txt
+fqLst=$(awk '{ if ($11 == "yes") print $5 }' $samples)
+sample=$(echo $fqLst | cut -d" " -f$i)
+#raw_fq1_zip=${mainDir}${sample}.end1_val_1_fastqc.zip
+#raw_fq2_zip=${raw_fq1_zip/end1_val_1/end2_val_2}
 
-ls -d ${mainDir}/FASTQraw_trimmed/*.fq > fastqList_trimmed.txt
+#raw_fq1=${mainDir}$(basename -s .zip $raw_fq1_zip)
+#raw_fq2=${mainDir}$(basename -s .zip $raw_fq2_zip)
 
-fqLst=${mainDir}fastqList_trimmed.txt
-samples=/groups/nordborg/projects/cegs/16Vs6C/Data/Transcriptome/RawData/samples.txt
-raw_fq1=$(sed -n ${i}p $fqLst)
-raw_fq2=${raw_fq1/end1_val1/end2_val2}
+raw_fq1=${mainDir}${sample}.end1_val_1.fq
+raw_fq2=${mainDir}${sample}.end2_val_2.fq  
 
-fqbase=$(basename -s .end1.fastq $raw_fq1)
-#select sample number (five digit number followed by underscore
-sample=$(echo $fqbase | grep -o -E '[0-9]{5}_')
-# remove underscore from sample number
-sample=${sample%'_'}
-accession=$(awk -v sample="$sample" '$1==sample {print $2}' $samples)
+#get accession and short sample name                                                            
+accession=$(awk -v l="$sample" '$5==l {print $2}' $samples)
+fqbase=$(awk -v l="$sample" '$5==l {print $1}' $samples)
+
 
 if [ $accession = 6909 ]
 then
-	indices=$HOME/Data/TAIR10/STAR_indices_Araport11_125bpreads/
+	indices=/users/sonia.celestini/New_data/Results/pseudogenomes/TAIR10_6909_STAR_idx/
 else
-	indices=$HOME/Data/TAIR10/PseudoGenome_STAR_Indices/pseudoTAIR10_${accession}/
+	indices=/users/sonia.celestini/New_data/Results/pseudogenomes/pseudoTAIR10_${accession}_STAR_idx/
 fi
 
 echo using STAR indices from: $indices
 
 cores=8
-STAR_out=${mainDir}Alignement_STAR_annot/${fqbase}_pseudoG/
+STAR_out=/users/sonia.celestini/New_data/Results/Alignement_STAR_annot/${fqbase}_pseudoG/
 
 mkdir -p $STAR_out
+
+# unzip fastq files #
+#echo 'unzipping files:'
+#echo $raw_fq1_zip
+#echo $raw_fq2_zip
+
+#unzip $raw_fq1_zip -d $mainDir
+#unzip $raw_fq2_zip -d $mainDir
+
 
 # RUN #
 STAR \
@@ -59,8 +70,11 @@ STAR \
 --readFilesIn $raw_fq1 $raw_fq2 \
 --outFileNamePrefix $STAR_out
 
+
+echo 'Job finished'
+
 # rezip fastq files #
-echo 'rezipping'
-pigz $raw_fq1
-pigz $raw_fq2
+#echo 'rezipping'
+#zip -rm ${raw_fq1}.zip $raw_fq1
+#zip -rm ${raw_fq2}.zip $raw_fq2
 

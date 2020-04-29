@@ -1,18 +1,18 @@
 #!/bin/sh
 
-# PBS #
-#PBS -N salmonQuasi
-#PBS -P cegs
-#PBS -j oe
-#PBS -o Logs/salmon_quasiMap_Araport11_pseudoG_^array_index^.log
-#PBS -l walltime=1:00:00,mem=20GB,ncpus=4
-#PBS -J 1-26
+# SLURM #
+#SBATCH --job-name=salmonQuasi
+#SBATCH --output=/users/sonia.celestini/New_data/Logs/salmon_quasiMap_Araport11_pseudoG_^array_index^.log
+#SBATCH --time=1:00:00
+#SBATCH --mem-per-cpu=20GB
+#SBATCH --cpus-per-task=4
+#SBATCH --array=1-48
 
 # MODULES #
-ml Salmon/0.12.0-foss-2018b-Python-2.7.15
+ml Salmon/0.12.0-foss-2018b-Python-3.7.4
 
 # DATA #
-i=$PBS_ARRAY_INDEX
+i=$SLURM_ARRAY_TASK_ID
 DATA=/lustre/scratch/users/pieter.clauw/Transcriptome/6vs16/Data/
 FASTQdir=${DATA}Trimmed_illumina/
 RESULTS=/lustre/scratch/users/pieter.clauw/Transcriptome/6vs16/Results/
